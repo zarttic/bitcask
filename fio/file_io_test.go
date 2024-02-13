@@ -22,7 +22,7 @@ func TestNewFileIOManager(t *testing.T) {
 	assert.NotNil(t, fio)
 
 	defer func() {
-		fio.Close()
+		_ = fio.Close()
 		destoryTestFile(path)
 	}()
 
@@ -34,7 +34,7 @@ func TestFileIO_Write(t *testing.T) {
 	fio, err := NewFileIOManager(path)
 
 	defer func() {
-		fio.Close()
+		_ = fio.Close()
 		destoryTestFile(path)
 	}()
 
@@ -60,7 +60,7 @@ func TestFileIO_Read(t *testing.T) {
 	fio, err := NewFileIOManager(path)
 
 	defer func() {
-		fio.Close()
+		_ = fio.Close()
 		destoryTestFile(path)
 	}()
 
@@ -88,7 +88,6 @@ func TestFileIO_Sync(t *testing.T) {
 	fio, err := NewFileIOManager(path)
 
 	defer func() {
-		fio.Close()
 		destoryTestFile(path)
 	}()
 
