@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+ <trees>
+     <tree path="/index" title="索引"/>
+     <tree path="/data" title="数据相关"/>
+ </trees>
