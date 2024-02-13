@@ -14,7 +14,8 @@ func destoryTestFile(name string) {
 	}
 }
 func TestNewFileIOManager(t *testing.T) {
-	path := filepath.Join("../temp", "test.data")
+	//path := filepath.Join("../temp", "test.data")
+	path := filepath.Join("/tmp", "test.data")
 
 	fio, err := NewFileIOManager(path)
 
@@ -29,7 +30,7 @@ func TestNewFileIOManager(t *testing.T) {
 }
 
 func TestFileIO_Write(t *testing.T) {
-	path := filepath.Join("../temp", "test.data")
+	path := filepath.Join("/tmp", "test.data")
 
 	fio, err := NewFileIOManager(path)
 
@@ -55,7 +56,7 @@ func TestFileIO_Write(t *testing.T) {
 }
 
 func TestFileIO_Read(t *testing.T) {
-	path := filepath.Join("../temp", "test.data")
+	path := filepath.Join("/tmp", "test.data")
 
 	fio, err := NewFileIOManager(path)
 
@@ -83,7 +84,7 @@ func TestFileIO_Read(t *testing.T) {
 	assert.Equal(t, []byte("67890"), b2)
 }
 func TestFileIO_Sync(t *testing.T) {
-	path := filepath.Join("../temp", "test.data")
+	path := filepath.Join("/tmp", "test.data")
 
 	fio, err := NewFileIOManager(path)
 
@@ -98,7 +99,7 @@ func TestFileIO_Sync(t *testing.T) {
 	assert.Nil(t, err)
 }
 func TestFileIO_Close(t *testing.T) {
-	path := filepath.Join("../temp", "test.data")
+	path := filepath.Join("/tmp", "test.data")
 
 	fio, err := NewFileIOManager(path)
 
