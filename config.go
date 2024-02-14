@@ -8,4 +8,14 @@ type DBConfig struct {
 	// 每次写入数据后是否持久化
 	// TODO 改成 有xx概率进行持久化？
 	SyncWrite bool
+	//索引类型
+	IndexType IndexerType
 }
+type IndexerType = int8
+
+const (
+	// Btree 索引
+	Btree IndexerType = iota + 1
+	// ART 自适应基数树索引
+	ART
+)
