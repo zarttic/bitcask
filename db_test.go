@@ -287,3 +287,32 @@ func TestDB_Fold(t *testing.T) {
 	})
 	assert.Nil(t, err)
 }
+func TestDB_Close(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	temp, err := os.MkdirTemp("", "bitcask-test-close")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+}
+func TestDB_Sync(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	temp, err := os.MkdirTemp("", "bitcask-test-sync")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	err = db.Sync()
+	assert.Nil(t, err)
+
+}
