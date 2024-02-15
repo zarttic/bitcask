@@ -67,6 +67,11 @@ func (bt *BTree) Delete(key []byte) bool {
 	return true
 }
 
+// Size 获取数据量
+func (bt *BTree) Size() int {
+	return bt.tree.Len()
+}
+
 // BTree 迭代器
 type btreeIterator struct {
 	// 当前遍历的下标位置
