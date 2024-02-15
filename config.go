@@ -1,5 +1,7 @@
 package bitcask
 
+import "os"
+
 type DBConfig struct {
 	// 数据库数据目录
 	DirPath string
@@ -19,3 +21,10 @@ const (
 	// ART 自适应基数树索引
 	ART
 )
+
+var DefaultConfig = DBConfig{
+	DirPath:      os.TempDir(),
+	DataFileSize: 1024 * 1024 * 1024,
+	SyncWrite:    false,
+	IndexType:    Btree,
+}
