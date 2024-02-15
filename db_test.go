@@ -101,4 +101,15 @@ func TestDB_Delete(t *testing.T) {
 	// 删除空的key
 	err = db.Delete(nil)
 	assert.Equal(t, err, ErrKeyIsEmpty)
+	// 删除后重新put
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	err = db.Delete(key)
+	assert.Nil(t, err)
+
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	get, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, get, val)
 }
