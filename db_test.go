@@ -287,6 +287,8 @@ func TestDB_Fold(t *testing.T) {
 	})
 	assert.Nil(t, err)
 }
+
+// TestDB_Close is a unit test function for the Close method of the DB struct.
 func TestDB_Close(t *testing.T) {
 	// Create a temporary directory for testing
 	cfg := DefaultConfig
@@ -300,6 +302,8 @@ func TestDB_Close(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 }
+
+// TestDB_Sync is a unit test function for the Sync method of the DB struct.
 func TestDB_Sync(t *testing.T) {
 	// Create a temporary directory for testing
 	cfg := DefaultConfig
@@ -314,5 +318,4 @@ func TestDB_Sync(t *testing.T) {
 	assert.NotNil(t, db)
 	err = db.Sync()
 	assert.Nil(t, err)
-
 }
