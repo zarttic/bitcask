@@ -77,8 +77,48 @@ func TestDB_Put(t *testing.T) {
 	assert.Equal(t, 2, len(db.oldFile))
 }
 func TestDB_Get(t *testing.T) {
-	//读取数据
-
+	cfg := DefaultConfig
+	cfg.DataFileSize = 64 * 1024 * 1024
+	temp, err := os.MkdirTemp("", "bitcask-test-get")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+	db, err := Open(cfg)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	key := utils.GetTestKey(1)
+	val := utils.GetTestValue(24)
+	// 读取数据
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	get1, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, get1, val)
+	// 读取不存在的key
+	get2, err := db.Get([]byte("unknown key"))
+	assert.Nil(t, get2)
+	assert.Equal(t, err, ErrKeyNotFound)
+	// 更新后读出
+	valNew := utils.GetTestValue(24)
+	err = db.Put(key, valNew)
+	assert.Nil(t, err)
+	get3, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, get3, valNew)
+	// 删除后读
+	err = db.Delete(key)
+	assert.Nil(t, err)
+	get4, err := db.Get(key)
+	assert.Equal(t, 0, len(get4))
+	assert.Equal(t, ErrKeyNotFound, err)
+	// 从旧文件读
+	for i := 0; i < 1000000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
+		assert.Nil(t, err)
+	}
+	assert.Equal(t, 2, len(db.oldFile))
+	get5, err := db.Get(utils.GetTestKey(1))
+	assert.Nil(t, err)
+	assert.NotNil(t, get5)
 }
 func TestDB_Delete(t *testing.T) {
 	cfg := DefaultConfig
