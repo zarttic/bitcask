@@ -7,16 +7,30 @@ import (
 	"testing"
 )
 
+func destroyDB(db *DB) {
+	if db != nil {
+		if db.activeFile != nil {
+			_ = db.Close()
+		}
+		err := os.RemoveAll(db.cfg.DirPath)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 // TestOpen is a test function for the Open function.
 func TestOpen(t *testing.T) {
 	cfg := DefaultConfig
 	// Create a temporary directory for testing.
 	temp, err := os.MkdirTemp("", "bitcask-test-open")
+
 	assert.Nil(t, err)
 	cfg.DirPath = temp
 
 	// Open a new Bitcask database.
 	db, err := Open(cfg)
+	defer destroyDB(db)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -33,6 +47,8 @@ func TestDB_Put(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
+	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -69,7 +85,15 @@ func TestDB_Put(t *testing.T) {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
 		assert.Nil(t, err)
 	}
+	// Restart the DB instance and test the Put method again
 	assert.Equal(t, 2, len(db.oldFile))
+	err = db.Close()
+	assert.Nil(t, err)
+	db, err = Open(cfg)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	err = db.Put(key, val)
+	assert.Nil(t, err)
 }
 
 // TestDB_Get is a unit test function for the Get method of the DB struct.
@@ -83,6 +107,8 @@ func TestDB_Get(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
+	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -126,6 +152,15 @@ func TestDB_Get(t *testing.T) {
 	get5, err := db.Get(utils.GetTestKey(1))
 	assert.Nil(t, err)
 	assert.NotNil(t, get5)
+
+	// Restart the database and verify the deletion
+	err = db.Close()
+	assert.Nil(t, err)
+	db, err = Open(cfg)
+	assert.Nil(t, err)
+	get6, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.NotNil(t, get6)
 }
 
 // TestDB_Delete is a unit test function for the Delete method of the DB struct.
@@ -138,6 +173,8 @@ func TestDB_Delete(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
+	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -169,4 +206,84 @@ func TestDB_Delete(t *testing.T) {
 	get, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, get, val)
+
+	// Restart the database and verify the deletion
+	err = db.Close()
+	assert.Nil(t, err)
+	db, err = Open(cfg)
+	_, err = db.Get([]byte("unknown key"))
+	assert.Equal(t, ErrKeyNotFound, err)
+	val2, err := db.Get(utils.GetTestKey(1))
+	assert.Nil(t, err)
+	assert.Equal(t, val, val2)
+
+}
+
+// TestDB_ListKeys is a unit test function for the ListKeys method of the DB struct.
+func TestDB_ListKeys(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	temp, err := os.MkdirTemp("", "bitcask-test-list-keys")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	// Test when the database is empty
+	keys1 := db.ListKeys()
+	assert.Equal(t, 0, len(keys1))
+
+	// Test when there is only one key-value pair
+	err = db.Put(utils.GetTestKey(10), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	keys2 := db.ListKeys()
+	assert.Equal(t, 1, len(keys2))
+
+	// Test when there are multiple key-value pairs
+	err = db.Put(utils.GetTestKey(11), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(12), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(13), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(14), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	keys3 := db.ListKeys()
+	assert.Equal(t, 5, len(keys3))
+}
+
+// TestDB_Fold is a test function for the Fold method of the DB struct.
+func TestDB_Fold(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	temp, err := os.MkdirTemp("", "bitcask-test-fold")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	// Put some test data into the DB
+	err = db.Put(utils.GetTestKey(10), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(11), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(12), utils.GetTestValue(10))
+	assert.Nil(t, err)
+	err = db.Put(utils.GetTestKey(13), utils.GetTestValue(10))
+	assert.Nil(t, err)
+
+	// Fold over the DB and perform some assertions
+	err = db.Fold(func(key, value []byte) bool {
+		assert.NotNil(t, key)
+		return true
+	})
+	assert.Nil(t, err)
 }

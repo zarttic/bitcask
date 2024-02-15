@@ -322,3 +322,92 @@ func (db *DB) Delete(key []byte) error {
 	}
 	return nil
 }
+
+// ListKeys returns a list of keys in the database.
+func (db *DB) ListKeys() [][]byte {
+	// Get an iterator for the index.
+	iterator := db.index.Iterator(false)
+
+	// Create a slice to store the keys.
+	keys := make([][]byte, db.index.Size())
+
+	// Initialize the index of the keys slice.
+	var idx int
+
+	// Iterate over the index using the iterator.
+	for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+		// Get the key from the iterator and store it in the keys slice.
+		keys[idx] = iterator.Key()
+		idx++
+	}
+
+	// Return the keys slice.
+	return keys
+}
+
+// Fold 获取所有的数据并执行指定的操作
+// Fold applies the given function to each key-value pair in the database.
+// The function returns true if the iteration should continue, or false to stop.
+// The function is called with the key and value of each pair.
+// The function must be safe for concurrent access.
+// The Fold function returns an error if there is a problem iterating over the database.
+func (db *DB) Fold(fn func(key, value []byte) bool) error {
+	// Acquire a read lock on the database.
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	// Get an iterator for the index.
+	iterator := db.index.Iterator(false)
+
+	// Iterate over the index using the iterator.
+	for iterator.Rewind(); iterator.Valid(); iterator.Next() {
+		// Get the key from the iterator.
+		key := iterator.Key()
+
+		// Get the value for the key from the database.
+		value, err := db.getValueByPosition(iterator.Value())
+		if err != nil {
+			return err
+		}
+
+		// Apply the function to the key-value pair.
+		if !fn(key, value) {
+			break
+		}
+	}
+
+	// Return nil if the iteration was successful.
+	return nil
+}
+
+// Close closes the DB connection and releases any resources.
+func (db *DB) Close() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// Close the current active file.
+	if err := db.activeFile.Close(); err != nil {
+		return err
+	}
+
+	// Close the old data files.
+	for _, file := range db.oldFile {
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (db *DB) Sync() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return db.activeFile.Sync()
+}
