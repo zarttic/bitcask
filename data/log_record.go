@@ -73,12 +73,12 @@ func EncodeLogRecord(record *LogRecord) ([]byte, int64) {
 	crc := crc32.ChecksumIEEE(encBytes[4:])
 	//写入到头部，（LittleEndian 以小端去写）
 	binary.LittleEndian.PutUint32(encBytes[:4], crc)
-
 	return encBytes, int64(totalSize)
 }
 
-// decodeLogRecord 解码字节数组中的Header
-func decodeLogRecord(buf []byte) (*logRecordHeader, int64) {
+// decodeLogRecordHeader 解码字节数组中的Header
+// 返回header 长度
+func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
 	if len(buf) <= 4 {
 		return nil, 0
 	}
