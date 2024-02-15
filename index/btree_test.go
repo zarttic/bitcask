@@ -80,3 +80,45 @@ func TestBTree_Delete(t *testing.T) {
 	// Delete the key-value pair from the BTree.
 	assert.True(t, bt.Delete([]byte("a")))
 }
+
+// TestBTree_Iterator is a test function for the BTree iterator.
+func TestBTree_Iterator(t *testing.T) {
+	// Create a new BTree.
+	bt1 := NewBTree()
+
+	// BTree is empty.
+	iter1 := bt1.Iterator(false)
+	assert.Equal(t, iter1.Valid(), false)
+
+	// BTree has one data.
+	bt1.Put([]byte("key"), &data.LogRecordPos{Fid: 1, Offset: 100})
+	iter2 := bt1.Iterator(false)
+	assert.Equal(t, iter2.Valid(), true)
+	iter2.Next()
+	assert.Equal(t, iter2.Valid(), false)
+
+	// BTree has multiple data.
+	bt1.Put([]byte("key1"), &data.LogRecordPos{Fid: 1, Offset: 100})
+	bt1.Put([]byte("key2"), &data.LogRecordPos{Fid: 1, Offset: 100})
+	bt1.Put([]byte("key3"), &data.LogRecordPos{Fid: 1, Offset: 100})
+	iter3 := bt1.Iterator(false)
+	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
+		assert.NotNil(t, iter3.Key())
+		assert.NotNil(t, iter3.Value())
+	}
+	iter4 := bt1.Iterator(true)
+	for iter4.Rewind(); iter4.Valid(); iter4.Next() {
+		assert.NotNil(t, iter4.Key())
+		assert.NotNil(t, iter4.Value())
+	}
+
+	// Seek test.
+	iter5 := bt1.Iterator(false)
+	for iter5.Seek([]byte("key2")); iter5.Valid(); iter5.Next() {
+		assert.NotNil(t, iter5.Key())
+	}
+	iter6 := bt1.Iterator(true)
+	for iter6.Seek([]byte("key2")); iter6.Valid(); iter6.Next() {
+		assert.NotNil(t, iter6.Key())
+	}
+}

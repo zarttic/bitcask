@@ -2,6 +2,8 @@ package index
 
 import (
 	"bitcask/data"
+	"bytes"
+	"sort"
 	"sync"
 )
 import "github.com/google/btree"
@@ -11,6 +13,16 @@ import "github.com/google/btree"
 type BTree struct {
 	tree *btree.BTree
 	lock *sync.RWMutex // 写操作并发不安全，读操作并发安全
+}
+
+func (bt *BTree) Iterator(reverse bool) Iterator {
+	if bt == nil {
+		return nil
+	}
+	bt.lock.RLock()
+	defer bt.lock.RUnlock()
+	return newBTreeIterator(bt.tree, reverse)
+
 }
 
 // NewBTree 初始化 BTree 索引结构
@@ -53,4 +65,78 @@ func (bt *BTree) Delete(key []byte) bool {
 		return false
 	}
 	return true
+}
+
+// BTree 迭代器
+type btreeIterator struct {
+	// 当前遍历的下标位置
+	currIndex int
+	// 是否反向遍历
+	reverse bool
+	// key+位置索引信息
+	values []*Item
+}
+
+func newBTreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
+	var idx int
+	values := make([]*Item, tree.Len())
+	saveValues := func(it btree.Item) bool {
+		values[idx] = it.(*Item)
+		idx++
+		return true
+	}
+	if reverse {
+		tree.Descend(saveValues)
+	} else {
+		tree.Ascend(saveValues)
+
+	}
+	return &btreeIterator{
+		currIndex: 0,
+		reverse:   reverse,
+		values:    values,
+	}
+}
+
+// Rewind rewinds the iterator to the beginning of the BTree.
+func (bt *btreeIterator) Rewind() {
+	bt.currIndex = 0
+}
+
+func (bt *btreeIterator) Seek(key []byte) {
+	//btree 有序，使用二分查找加速
+	if bt.reverse {
+		bt.currIndex = sort.Search(len(bt.values), func(i int) bool {
+			return bytes.Compare(bt.values[i].key, key) <= 0
+		})
+	} else {
+		bt.currIndex = sort.Search(len(bt.values), func(i int) bool {
+			return bytes.Compare(bt.values[i].key, key) >= 0
+		})
+	}
+}
+
+// Next moves the iterator to the next element in the BTree.
+func (bt *btreeIterator) Next() {
+	bt.currIndex++
+}
+
+// Valid returns true if the iterator is still valid, false otherwise.
+func (bt *btreeIterator) Valid() bool {
+	return bt.currIndex < len(bt.values)
+}
+
+// Key returns the key of the current element in the BTree.
+func (bt *btreeIterator) Key() []byte {
+	return bt.values[bt.currIndex].key
+}
+
+// Value returns the value of the current element in the BTree.
+func (bt *btreeIterator) Value() *data.LogRecordPos {
+	return bt.values[bt.currIndex].pos
+}
+
+// Close closes the iterator and releases any resources it was using.
+func (bt *btreeIterator) Close() {
+	bt.values = nil
 }
