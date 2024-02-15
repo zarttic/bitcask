@@ -19,6 +19,8 @@ type Indexer interface {
 	Delete(key []byte) bool
 	// Iterator 索引迭代器
 	Iterator(reverse bool) Iterator
+	//Size 索引中的数据量
+	Size() int
 }
 
 // IndexType 索引类型
