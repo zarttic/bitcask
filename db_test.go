@@ -7,19 +7,6 @@ import (
 	"testing"
 )
 
-// TODO
-// put get delete
-// 测试完成之后销毁目录
-func destoryDB(db *DB) {
-	if db.activeFile != nil {
-		_ = db.activeFile.Close()
-		err := os.RemoveAll(db.cfg.DirPath)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
 // TestOpen is a test function for the Open function.
 func TestOpen(t *testing.T) {
 	cfg := DefaultConfig
@@ -35,16 +22,21 @@ func TestOpen(t *testing.T) {
 
 }
 
+// TestDB_Put is a unit test function for the Put method of the DB struct.
 func TestDB_Put(t *testing.T) {
-	//put一条数据
+	// Create a temporary directory for testing
 	cfg := DefaultConfig
 	cfg.DataFileSize = 64 * 1024 * 1024
 	temp, err := os.MkdirTemp("", "bitcask-test-put")
 	assert.Nil(t, err)
 	cfg.DirPath = temp
+
+	// Open a new DB instance
 	db, err := Open(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+
+	// Test putting a new key-value pair
 	key := utils.GetTestKey(1)
 	val := utils.GetTestValue(24)
 	err = db.Put(key, val)
@@ -52,7 +44,8 @@ func TestDB_Put(t *testing.T) {
 	val1, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, val, val1)
-	//put key存在的数据
+
+	// Test putting an existing key-value pair
 	val = utils.GetTestValue(24)
 	err = db.Put(key, val)
 	assert.Nil(t, err)
@@ -60,57 +53,71 @@ func TestDB_Put(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, val, val2)
 
-	// key 为空
+	// Test putting a key with an empty key
 	err = db.Put(nil, val)
 	assert.Equal(t, err, ErrKeyIsEmpty)
-	// value 为空
+
+	// Test putting a value with an empty value
 	err = db.Put(key, nil)
 	assert.Nil(t, err)
 	val3, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, len(val3), 0)
-	// 写入到数据文件进行转换
+
+	// Test putting a large number of key-value pairs
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
 		assert.Nil(t, err)
 	}
 	assert.Equal(t, 2, len(db.oldFile))
 }
+
+// TestDB_Get is a unit test function for the Get method of the DB struct.
 func TestDB_Get(t *testing.T) {
+	// Create a temporary directory for testing
 	cfg := DefaultConfig
 	cfg.DataFileSize = 64 * 1024 * 1024
 	temp, err := os.MkdirTemp("", "bitcask-test-get")
 	assert.Nil(t, err)
 	cfg.DirPath = temp
+
+	// Open a new DB instance
 	db, err := Open(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
+
+	// Test getting an existing key
 	key := utils.GetTestKey(1)
 	val := utils.GetTestValue(24)
-	// 读取数据
+	// Put the key-value pair into the database
 	err = db.Put(key, val)
 	assert.Nil(t, err)
+	// Get the value associated with the key
 	get1, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, get1, val)
-	// 读取不存在的key
+
+	// Test getting a non-existing key
 	get2, err := db.Get([]byte("unknown key"))
 	assert.Nil(t, get2)
 	assert.Equal(t, err, ErrKeyNotFound)
-	// 更新后读出
+
+	// Test updating and getting a key
 	valNew := utils.GetTestValue(24)
 	err = db.Put(key, valNew)
 	assert.Nil(t, err)
 	get3, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, get3, valNew)
-	// 删除后读
+
+	// Test deleting and getting a key
 	err = db.Delete(key)
 	assert.Nil(t, err)
 	get4, err := db.Get(key)
 	assert.Equal(t, 0, len(get4))
 	assert.Equal(t, ErrKeyNotFound, err)
-	// 从旧文件读
+
+	// Test getting a key from old files
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
 		assert.Nil(t, err)
@@ -120,33 +127,43 @@ func TestDB_Get(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, get5)
 }
+
+// TestDB_Delete is a unit test function for the Delete method of the DB struct.
 func TestDB_Delete(t *testing.T) {
+	// Create a temporary directory for testing
 	cfg := DefaultConfig
 	temp, err := os.MkdirTemp("", "bitcask-test-delete")
 	assert.Nil(t, err)
 	cfg.DirPath = temp
+
+	// Open a new DB instance
 	db, err := Open(cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
-	// 删除存在的key
+
+	// Delete an existing key
 	key := utils.GetTestKey(1)
 	val := utils.GetTestValue(24)
 	err = db.Put(key, val)
 	assert.Nil(t, err)
 	err = db.Delete(key)
 	assert.Nil(t, err)
-	// 删除不存在的key
+
+	// Delete a non-existing key
 	err = db.Delete([]byte("unknown key"))
 	assert.Nil(t, err)
-	// 删除空的key
+
+	// Delete an empty key
 	err = db.Delete(nil)
 	assert.Equal(t, err, ErrKeyIsEmpty)
-	// 删除后重新put
+
+	// Delete a key and then put it again
 	err = db.Put(key, val)
 	assert.Nil(t, err)
 	err = db.Delete(key)
 	assert.Nil(t, err)
 
+	// Put a key and then get it to verify the deletion
 	err = db.Put(key, val)
 	assert.Nil(t, err)
 	get, err := db.Get(key)
