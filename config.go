@@ -24,7 +24,7 @@ const (
 
 var DefaultConfig = DBConfig{
 	DirPath:      os.TempDir(),
-	DataFileSize: 1024 * 1024 * 1024,
+	DataFileSize: 512 * 1024 * 1024,
 	SyncWrite:    false,
 	IndexType:    Btree,
 }

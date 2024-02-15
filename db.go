@@ -22,7 +22,7 @@ type DB struct {
 	//文件id只能用于加载文件索引时使用，不能在其他地方使用
 	fileIDs []int
 	//活跃文件 用于写入
-	activateFile *data.DataFile
+	activeFile *data.DataFile
 	// 旧数据文件，只用于读出
 	oldFile map[uint32]*data.DataFile
 	//内存索引
@@ -95,64 +95,64 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
 	defer db.mu.Unlock()
 	//判断当前活跃文件是否存在,在数据库没有被写入的时候是没有任何文件的
 	// 如果为空则需要初试化
-	if db.activateFile == nil {
+	if db.activeFile == nil {
 
-		if err := db.setActivateFile(); err != nil {
+		if err := db.setActiveFile(); err != nil {
 			return nil, err
 		}
 	}
 	//写入数据编码
 	encRecord, size := data.EncodeLogRecord(logRecord)
 	// 如果写入的数据已经达到了活跃文件的阈值，则关闭活跃文件，打开新的文件
-	if db.activateFile.WriteOff+size > db.cfg.DataFileSize {
+	if db.activeFile.WriteOff+size > db.cfg.DataFileSize {
 		//将当前文件持久化,保证已有的数据保存到磁盘
 
-		if err := db.activateFile.Sync(); err != nil {
+		if err := db.activeFile.Sync(); err != nil {
 			return nil, err
 		}
 		//持久化之后，将当前的活跃文件转化为旧文件
-		db.oldFile[db.activateFile.FileID] = db.activateFile
+		db.oldFile[db.activeFile.FileID] = db.activeFile
 		//打开新的数据文件
 
-		if err := db.setActivateFile(); err != nil {
+		if err := db.setActiveFile(); err != nil {
 			return nil, err
 		}
 	}
 	// 记录当前文件offset
-	offset := db.activateFile.WriteOff
+	offset := db.activeFile.WriteOff
 	//写入文件
 
-	if err := db.activateFile.Write(encRecord); err != nil {
+	if err := db.activeFile.Write(encRecord); err != nil {
 		return nil, err
 	}
 	//每次写入之后是否要对数据进行持久化，提升安全性，但是性能会下降
 	if db.cfg.SyncWrite {
 
-		if err := db.activateFile.Sync(); err != nil {
+		if err := db.activeFile.Sync(); err != nil {
 			return nil, err
 		}
 	}
 	//构造内存索引信息并返回
 	pos := &data.LogRecordPos{
-		Fid:    db.activateFile.FileID,
+		Fid:    db.activeFile.FileID,
 		Offset: offset,
 	}
 	return pos, nil
 }
 
-// setActivateFile 设置当前活跃文件
+// setActiveFile 设置当前活跃文件
 // 需要添加互斥锁访问
-func (db *DB) setActivateFile() error {
+func (db *DB) setActiveFile() error {
 	var initialFileId uint32 = 0
-	if db.activateFile != nil {
-		initialFileId = db.activateFile.FileID + 1
+	if db.activeFile != nil {
+		initialFileId = db.activeFile.FileID + 1
 	}
 	// 打开新的活跃文件
 	file, err := data.OpenDataFile(db.cfg.DirPath, initialFileId)
 	if err != nil {
 		return err
 	}
-	db.activateFile = file
+	db.activeFile = file
 	return nil
 }
 
@@ -171,8 +171,8 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 	//根据文件id找到对应的文件
 	var dataFile *data.DataFile
-	if db.activateFile.FileID == pod.Fid {
-		dataFile = db.activateFile
+	if db.activeFile.FileID == pod.Fid {
+		dataFile = db.activeFile
 	} else {
 		//活跃文件中没有找旧文件
 		dataFile = db.oldFile[pod.Fid]
@@ -238,7 +238,7 @@ func (db *DB) loadDataFiles() error {
 		}
 		//最后的一个也就是最新的一个是活跃文件
 		if i == len(fileIds)-1 {
-			db.activateFile = file
+			db.activeFile = file
 		} else { //其他的也就是旧文件
 			db.oldFile[uint32(fid)] = file
 		}
@@ -257,8 +257,8 @@ func (db *DB) loadIndexFromFiles() error {
 	for i, fid := range db.fileIDs {
 		var fileID = uint32(fid)
 		var dataFile *data.DataFile
-		if fileID == db.activateFile.FileID {
-			dataFile = db.activateFile
+		if fileID == db.activeFile.FileID {
+			dataFile = db.activeFile
 		} else {
 			dataFile = db.oldFile[fileID]
 		}
@@ -287,7 +287,7 @@ func (db *DB) loadIndexFromFiles() error {
 		}
 		//如果当前是活跃文件，更新活跃文件的偏移
 		if i == len(db.fileIDs)-1 {
-			db.activateFile.WriteOff = offset
+			db.activeFile.WriteOff = offset
 		}
 	}
 	return nil
