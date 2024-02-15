@@ -165,24 +165,28 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 		return nil, ErrKeyIsEmpty
 	}
 	//从内存中取出key对应的索引信息
-	pod := db.index.Get(key)
-	if pod == nil {
+	pos := db.index.Get(key)
+	if pos == nil {
 		return nil, ErrKeyNotFound
 	}
+
+	return db.getValueByPosition(pos)
+}
+func (db *DB) getValueByPosition(pos *data.LogRecordPos) ([]byte, error) {
 	//根据文件id找到对应的文件
 	var dataFile *data.DataFile
-	if db.activeFile.FileID == pod.Fid {
+	if db.activeFile.FileID == pos.Fid {
 		dataFile = db.activeFile
 	} else {
 		//活跃文件中没有找旧文件
-		dataFile = db.oldFile[pod.Fid]
+		dataFile = db.oldFile[pos.Fid]
 	}
 	//数据文件为空
 	if dataFile == nil {
 		return nil, ErrDataFileNotFound
 	}
 	//根据偏移读取数据
-	record, _, err := dataFile.ReadLogRecord(pod.Offset)
+	record, _, err := dataFile.ReadLogRecord(pos.Offset)
 	if err != nil {
 		return nil, err
 	}
