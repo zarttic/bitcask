@@ -6,7 +6,7 @@ import (
 	"github.com/google/btree"
 )
 
-// Indexer TODO
+// Indexer TODO 添加art实现
 // Indexer 抽象索引接口，后续如果想要接入其他的数据结构，则直接实现这个接口即可
 type Indexer interface {
 	// Put 向索引中存储 key 对应的数据位置信息
@@ -19,10 +19,11 @@ type Indexer interface {
 	Delete(key []byte) bool
 }
 
+// IndexType 索引类型
 type IndexType = int8
 
+// Btree 索引
 const (
-	// Btree 索引
 	Btree IndexType = iota + 1
 	// ART 自适应基数树索引
 	ART
@@ -39,9 +40,9 @@ func NewIndexer(tp IndexType) Indexer {
 	default:
 		panic("unsupported index type")
 	}
-
 }
 
+// Item 索引项
 type Item struct {
 	key []byte
 	pos *data.LogRecordPos

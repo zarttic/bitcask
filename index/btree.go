@@ -21,6 +21,7 @@ func NewBTree() *BTree {
 	}
 }
 
+// Put 将 key-value 对添加到 BTree 中
 func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) bool {
 	it := &Item{key: key, pos: pos}
 	bt.lock.Lock()
@@ -29,6 +30,7 @@ func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) bool {
 	return true
 }
 
+// Get 根据 key 从 BTree 中获取对应的 value
 func (bt *BTree) Get(key []byte) *data.LogRecordPos {
 	it := &Item{key: key}
 	btreeItem := bt.tree.Get(it)
@@ -40,6 +42,7 @@ func (bt *BTree) Get(key []byte) *data.LogRecordPos {
 	return btreeItem.(*Item).pos
 }
 
+// Delete 从 BTree 中删除指定的 key
 func (bt *BTree) Delete(key []byte) bool {
 	it := &Item{key: key}
 	bt.lock.Lock()
