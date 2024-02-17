@@ -13,11 +13,11 @@ type Iterator struct {
 }
 
 // NewIterator creates a new Iterator for the DB.
-func (db *DB) NewIterator(opts IteratorConfig) *Iterator {
+func (db *DB) NewIterator(cfg IteratorConfig) *Iterator {
 	return &Iterator{
-		indexIter: db.index.Iterator(opts.Reverse),
+		indexIter: db.index.Iterator(cfg.Reverse),
 		db:        db,
-		cfg:       opts,
+		cfg:       cfg,
 	}
 }
 

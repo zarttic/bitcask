@@ -30,6 +30,14 @@ type IteratorConfig struct {
 	Reverse bool
 }
 
+// WriteBatchConfig represents the configuration for a write batch.
+type WriteBatchConfig struct {
+	// MaxBatchNum is the maximum number of data in a batch.
+	MaxBatchNum uint
+	// SyncWrites determines whether to persist the transaction when committing.
+	SyncWrites bool
+}
+
 // DefaultConfig is the default configuration for the DB.
 var DefaultConfig = DBConfig{
 	DirPath:      os.TempDir(),      // Set the directory path to the temporary directory.
@@ -40,4 +48,8 @@ var DefaultConfig = DBConfig{
 var DefaultIteratorConfig = IteratorConfig{
 	Prefix:  nil,
 	Reverse: false,
+}
+var DefaultWriteBatchConfig = WriteBatchConfig{
+	MaxBatchNum: 10000,
+	SyncWrites:  true,
 }
