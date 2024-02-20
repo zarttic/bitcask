@@ -23,6 +23,7 @@ func TestDB_NewIterator(t *testing.T) {
 
 	// Create a new iterator with the default configuration.
 	iterator := db.NewIterator(DefaultIteratorConfig)
+	defer iterator.Close()
 	assert.NotNil(t, iterator)
 	assert.Equal(t, false, iterator.Valid())
 }
@@ -50,6 +51,7 @@ func TestDB_NewIterator_One_Value(t *testing.T) {
 
 	// Create a new iterator with the default configuration.
 	iterator := db.NewIterator(DefaultIteratorConfig)
+	defer iterator.Close()
 	assert.NotNil(t, iterator)
 
 	// Verify that the iterator is valid and has the correct key.
@@ -95,6 +97,7 @@ func TestDB_NewIterator_Multi_Values(t *testing.T) {
 	assert.Nil(t, err)
 	// Create a new iterator for the DB.
 	it1 := db.NewIterator(DefaultIteratorConfig)
+	defer it1.Close()
 	assert.NotNil(t, it1)
 	// Iterate over all key-value pairs in the DB.
 	for it1.Rewind(); it1.Valid(); it1.Next() {
@@ -109,6 +112,7 @@ func TestDB_NewIterator_Multi_Values(t *testing.T) {
 
 	// Reverse iteration
 	it2 := db.NewIterator(IteratorConfig{Reverse: true})
+	defer it2.Close()
 	assert.NotNil(t, it2)
 	// Iterate over all key-value pairs in the DB in reverse order.
 	for it2.Rewind(); it2.Valid(); it2.Next() {

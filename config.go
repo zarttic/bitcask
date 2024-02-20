@@ -20,6 +20,7 @@ const (
 	Btree IndexerType = iota + 1
 	// ART 自适应基数树索引
 	ART
+	BPTree //B+树索引，将索引存储到磁盘上
 )
 
 // IteratorConfig 索引迭代器配置项
@@ -43,7 +44,7 @@ var DefaultConfig = DBConfig{
 	DirPath:      os.TempDir(),      // Set the directory path to the temporary directory.
 	DataFileSize: 512 * 1024 * 1024, // Set the data file size to 512 MB.
 	SyncWrite:    false,             // Disable synchronous write.
-	IndexType:    Btree,             // Use Btree index type.
+	IndexType:    BPTree,            // Use Btree index type.
 }
 var DefaultIteratorConfig = IteratorConfig{
 	Prefix:  nil,
