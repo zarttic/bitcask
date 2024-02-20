@@ -9,7 +9,12 @@ import (
 	"path/filepath"
 )
 
-const DataFileNameSuffix = ".data"
+const (
+	DataFileNameSuffix    = ".data"
+	HintFileName          = "hint-index"
+	MergeFinishedFileName = "merge-finished"
+	SeqNoFileName         = "seq-no"
+)
 
 var (
 	ErrInvalidCRC = errors.New("invalid crc value, log record maybe corrupted")
@@ -24,18 +29,49 @@ type DataFile struct {
 
 // OpenDataFile 打开新的数据文件
 func OpenDataFile(dirPath string, fileID uint32) (*DataFile, error) {
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d%s", fileID, DataFileNameSuffix))
+	fileName := GetDataFileName(dirPath, fileID)
+	return newDataFile(fileName, fileID)
+
+}
+
+// OpenHintFile 打开hint索引文件
+func OpenHintFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, HintFileName)
+	return newDataFile(fileName, 0)
+}
+
+// newDataFile函数用于创建一个新的DataFile对象。
+// 参数fileName为文件名，fileID为文件ID。
+// 返回一个指向DataFile对象的指针和一个错误对象。
+func newDataFile(fileName string, fileID uint32) (*DataFile, error) {
 	// 初始化IOManager管理接口
 	manager, err := fio.NewIOManager(fileName)
 	if err != nil {
 		return nil, err
 	}
-	//返回数据文件
+	// 返回数据文件
 	return &DataFile{
 		FileID:    fileID,
 		WriteOff:  0,
 		IoManager: manager,
 	}, nil
+}
+
+// WriteHintRecord 写入索引信息到hint文件
+func (df *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
+	record := &LogRecord{
+		Key:   key,
+		Value: EncodeLogRecordPos(pos),
+	}
+	encRecord, _ := EncodeLogRecord(record)
+
+	return df.Write(encRecord)
+}
+
+// OpenMergeFinishedFile 打开标识 merge 完成的文件
+func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, MergeFinishedFileName)
+	return newDataFile(fileName, 0)
 }
 
 // ReadLogRecord 根据offset读取数据信息
@@ -107,4 +143,7 @@ func (df *DataFile) Sync() error {
 // Close 关闭文件
 func (df *DataFile) Close() error {
 	return df.IoManager.Close()
+}
+func GetDataFileName(dirPath string, fileID uint32) string {
+	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFileNameSuffix)
 }

@@ -85,6 +85,9 @@ func EncodeLogRecord(record *LogRecord) ([]byte, int64) {
 
 // decodeLogRecordHeader 解码字节数组中的Header
 // 返回header 长度
+// decodeLogRecordHeader函数用于解码LogRecord的头部信息。
+// 参数buf为待解码的字节切片。
+// 返回解码后的logRecordHeader对象和解码后的字节切片的下一个索引。
 func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
 	if len(buf) <= 4 {
 		return nil, 0
@@ -94,26 +97,56 @@ func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
 		recordType: buf[4],
 	}
 	var index = 5
-	//读出kv size
+	// 读出key size
 	keySize, n := binary.Varint(buf[index:])
 	header.keySize = uint32(keySize)
 	index += n
+	// 读出value size
 	valueSize, n := binary.Varint(buf[index:])
 	index += n
 	header.valueSize = uint32(valueSize)
 
 	return header, int64(index)
 }
+
+// getLofRecordCRC函数用于计算LogRecord对象的CRC校验码。
+// 参数lr为要计算CRC校验码的LogRecord对象。
+// 参数header为LogRecord对象的头部字节切片。
+// 返回LogRecord对象的CRC校验码。
 func getLofRecordCRC(lr *LogRecord, header []byte) uint32 {
 	if lr == nil {
 		return 0
 	}
-	//引用
-	//crc := crc32.ChecksumIEEE(header)
-	//拷贝
+	// 使用crc32包计算CRC校验码
+	// 引用
+	// crc := crc32.ChecksumIEEE(header)
+	// 拷贝
 	crc := crc32.ChecksumIEEE(header[:])
 	crc = crc32.Update(crc, crc32.IEEETable, lr.Key)
 	crc = crc32.Update(crc, crc32.IEEETable, lr.Value)
 
 	return crc
+}
+
+// EncodeLogRecordPos 函数用于将LogRecordPos对象编码为字节数组。
+// 参数pos为要编码的LogRecordPos对象。
+// 返回编码后的字节数组。
+func EncodeLogRecordPos(pos *LogRecordPos) []byte {
+	buf := make([]byte, binary.MaxVarintLen32+binary.MaxVarintLen64)
+	var index = 0
+	index += binary.PutVarint(buf[index:], int64(pos.Fid))
+	index += binary.PutVarint(buf[index:], pos.Offset)
+	return buf[:index]
+}
+
+// DecodeLogRecordPos 解码
+func DecodeLogRecordPos(buf []byte) *LogRecordPos {
+	var index = 0
+	fid, n := binary.Varint(buf[index:])
+	index += n
+	offset, n := binary.Varint(buf[index:])
+	return &LogRecordPos{
+		Fid:    uint32(fid),
+		Offset: offset,
+	}
 }
