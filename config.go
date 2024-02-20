@@ -44,7 +44,7 @@ var DefaultConfig = DBConfig{
 	DirPath:      os.TempDir(),      // Set the directory path to the temporary directory.
 	DataFileSize: 512 * 1024 * 1024, // Set the data file size to 512 MB.
 	SyncWrite:    false,             // Disable synchronous write.
-	IndexType:    BPTree,            // Use Btree index type.
+	IndexType:    Btree,             // Use Btree index type.
 }
 var DefaultIteratorConfig = IteratorConfig{
 	Prefix:  nil,
