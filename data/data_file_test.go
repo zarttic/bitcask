@@ -106,3 +106,8 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 	assert.Equal(t, rec3, readRec3)
 	assert.Equal(t, size3, readSize3)
 }
+func TestGetDataFileName(t *testing.T) {
+	dirPath := os.TempDir()
+	fileID := 103
+	assert.Greater(t, len(GetDataFileName(dirPath, uint32(fileID))), 0)
+}
