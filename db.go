@@ -420,7 +420,7 @@ func (db *DB) Delete(key []byte) error {
 func (db *DB) ListKeys() [][]byte {
 	// Get an iterator for the index.
 	iterator := db.index.Iterator(false)
-
+	defer iterator.Close()
 	// Create a slice to store the keys.
 	keys := make([][]byte, db.index.Size())
 
