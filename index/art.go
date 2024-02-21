@@ -14,6 +14,10 @@ type AdaptiveRadixTree struct {
 	lock *sync.RWMutex
 }
 
+func (art *AdaptiveRadixTree) Close() error {
+	return nil
+}
+
 // NewART returns a new instance of AdaptiveRadixTree.
 func NewART() *AdaptiveRadixTree {
 	return &AdaptiveRadixTree{

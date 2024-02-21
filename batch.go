@@ -23,6 +23,10 @@ type WriteBatch struct {
 // NewWriteBatch 初始化WriteBatch方法
 // NewWriteBatch creates a new WriteBatch object with the given WriteBatchConfig.
 func (db *DB) NewWriteBatch(cfg WriteBatchConfig) *WriteBatch {
+	// b+树时且事务序列号文件不存在且不是第一次加载
+	if db.cfg.IndexType == BPTree && !db.seqNoFileExist && !db.isInitiated {
+		panic("cannot use write batch,seq NO file not exist")
+	}
 	return &WriteBatch{
 		cfg:           cfg,
 		mu:            new(sync.Mutex),

@@ -13,17 +13,21 @@ import (
 	"sync"
 )
 
+const seqNoKey = "seq.no"
+
 // DB bitcask 存储引擎实例
 // 实例各种资源 活跃文件，旧文件
 type DB struct {
-	cfg        DBConfig                  // 配置项
-	mu         *sync.RWMutex             // 互斥锁
-	fileIDs    []int                     // 文件id只能用于加载文件索引时使用，不能在其他地方使用
-	activeFile *data.DataFile            // 活跃文件 用于写入
-	oldFile    map[uint32]*data.DataFile // 旧数据文件，只用于读出
-	index      index.Indexer             // 内存索引
-	seqNo      uint64                    // 序列号
-	isMerging  bool                      //是否正在merge
+	cfg            DBConfig                  // 配置项
+	mu             *sync.RWMutex             // 互斥锁
+	fileIDs        []int                     // 文件id只能用于加载文件索引时使用，不能在其他地方使用
+	activeFile     *data.DataFile            // 活跃文件 用于写入
+	oldFile        map[uint32]*data.DataFile // 旧数据文件，只用于读出
+	index          index.Indexer             // 内存索引
+	seqNo          uint64                    // 序列号
+	isMerging      bool                      //是否正在merge
+	seqNoFileExist bool                      // 存储事务序列号的文件是否存在
+	isInitiated    bool                      // 是否是第一次初始化数据目录
 }
 
 // Open 打开bitcask存储引擎示例
@@ -33,20 +37,29 @@ func Open(cfg DBConfig) (*DB, error) {
 	if err := checkConfig(cfg); err != nil {
 		return nil, err
 	}
-
+	var isInitiated bool
 	// 判断数据目录是否存在，如果不存在则需要创建
 	if _, err := os.Stat(cfg.DirPath); os.IsNotExist(err) {
+		isInitiated = true
 		//os.ModePerm 默认权限，允许所有用户读写
 		if err := os.MkdirAll(cfg.DirPath, os.ModePerm); err != nil {
 			return nil, err
 		}
 	}
+	dir, err := os.ReadDir(cfg.DirPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(dir) == 0 {
+		isInitiated = true
+	}
 	//初试化DB实例
 	db := &DB{
-		cfg:     cfg,
-		mu:      new(sync.RWMutex),
-		oldFile: make(map[uint32]*data.DataFile),
-		index:   index.NewIndexer(cfg.IndexType),
+		cfg:         cfg,
+		mu:          new(sync.RWMutex),
+		oldFile:     make(map[uint32]*data.DataFile),
+		index:       index.NewIndexer(cfg.IndexType, cfg.DirPath, cfg.SyncWrite),
+		isInitiated: isInitiated,
 	}
 	// 加载merge目录
 	if err := db.loadMergeFile(); err != nil {
@@ -56,14 +69,30 @@ func Open(cfg DBConfig) (*DB, error) {
 	if err := db.loadDataFiles(); err != nil {
 		return nil, err
 	}
-	//从hint文件中加载索引（如果有的话）
-	if err := db.loadIndexFromFiles(); err != nil {
-		return nil, err
+	// b+树索引不需要从数据文件中加载索引
+	if cfg.IndexType != BPTree {
+		//从hint文件中加载索引（如果有的话）
+		if err := db.loadIndexFromFiles(); err != nil {
+			return nil, err
+		}
+		//从数据文件中加载索引
+		if err := db.loadIndexFromFiles(); err != nil {
+			return nil, err
+		}
+	} else { //取出当前事务序列号
+		if err := db.loadSeqNo(); err != nil {
+			return nil, err
+		}
+		if db.activeFile != nil {
+			size, err := db.activeFile.IoManager.Size()
+			if err != nil {
+				return nil, err
+			}
+			db.activeFile.WriteOff = size
+		}
+
 	}
-	//从数据文件中加载索引
-	if err := db.loadIndexFromFiles(); err != nil {
-		return nil, err
-	}
+
 	return db, nil
 
 }
@@ -99,7 +128,6 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
 	//判断当前活跃文件是否存在,在数据库没有被写入的时候是没有任何文件的
 	// 如果为空则需要初试化
 	if db.activeFile == nil {
-
 		if err := db.setActiveFile(); err != nil {
 			return nil, err
 		}
@@ -392,7 +420,7 @@ func (db *DB) Delete(key []byte) error {
 func (db *DB) ListKeys() [][]byte {
 	// Get an iterator for the index.
 	iterator := db.index.Iterator(false)
-
+	defer iterator.Close()
 	// Create a slice to store the keys.
 	keys := make([][]byte, db.index.Size())
 
@@ -452,6 +480,25 @@ func (db *DB) Close() error {
 	}
 	db.mu.Lock()
 	defer db.mu.Unlock()
+	if err := db.index.Close(); err != nil {
+		return err
+	}
+	// 保存当前事务序列号
+	seqNoFile, err := data.OpenSeqNoFile(db.cfg.DirPath)
+	if err != nil {
+		return err
+	}
+	record := &data.LogRecord{
+		Key:   []byte(seqNoKey),
+		Value: []byte(strconv.FormatUint(db.seqNo, 10)),
+	}
+	encRecord, _ := data.EncodeLogRecord(record)
+	if err := seqNoFile.Write(encRecord); err != nil {
+		return err
+	}
+	if err := seqNoFile.Sync(); err != nil {
+		return err
+	}
 
 	// Close the current active file.
 	if err := db.activeFile.Close(); err != nil {
@@ -475,4 +522,33 @@ func (db *DB) Sync() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	return db.activeFile.Sync()
+}
+
+// loadSeqNo 从指定路径加载序列号文件并获取最新的序列号
+func (db *DB) loadSeqNo() error {
+	// 拼接序列号文件路径
+	path := filepath.Join(db.cfg.DirPath, data.SeqNoFileName)
+	// 判断文件是否存在
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	}
+	// 打开序列号文件
+	file, err := data.OpenSeqNoFile(db.cfg.DirPath)
+	if err != nil {
+		return err
+	}
+	// 读取文件第一条日志记录
+	record, _, err := file.ReadLogRecord(0)
+	if err != nil {
+		return err
+	}
+	// 将日志记录的值转换为序列号
+	seq, err := strconv.ParseUint(string(record.Value), 10, 64)
+	if err != nil {
+		return err
+	}
+	// 更新数据库的序列号
+	db.seqNo = seq
+	db.seqNoFileExist = true
+	return nil
 }

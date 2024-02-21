@@ -147,3 +147,9 @@ func (df *DataFile) Close() error {
 func GetDataFileName(dirPath string, fileID uint32) string {
 	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFileNameSuffix)
 }
+
+// OpenSeqNoFile 存储事务序列号的文件
+func OpenSeqNoFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, SeqNoFileName)
+	return newDataFile(fileName, 0)
+}
