@@ -144,10 +144,8 @@ func TestDB_Get(t *testing.T) {
 	// Test getting a key from old files
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
-		if err != nil {
-			assert.Nil(t, err)
-			break
-		}
+		assert.Nil(t, err)
+
 	}
 	assert.Equal(t, 2, len(db.oldFile))
 	get5, err := db.Get(utils.GetTestKey(1))
