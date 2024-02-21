@@ -37,63 +37,63 @@ func TestOpen(t *testing.T) {
 }
 
 // TestDB_Put is a unit test function for the Put method of the DB struct.
-//func TestDB_Put(t *testing.T) {
-//	// Create a temporary directory for testing
-//	cfg := DefaultConfig
-//	cfg.DataFileSize = 64 * 1024 * 1024
-//	temp, err := os.MkdirTemp("", "bitcask-test-put")
-//	assert.Nil(t, err)
-//	cfg.DirPath = temp
-//
-//	// Open a new DB instance
-//	db, err := Open(cfg)
-//
-//	assert.Nil(t, err)
-//	assert.NotNil(t, db)
-//
-//	// Test putting a new key-value pair
-//	key := utils.GetTestKey(1)
-//	val := utils.GetTestValue(24)
-//	err = db.Put(key, val)
-//	assert.Nil(t, err)
-//	val1, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.Equal(t, val, val1)
-//
-//	// Test putting an existing key-value pair
-//	val = utils.GetTestValue(24)
-//	err = db.Put(key, val)
-//	assert.Nil(t, err)
-//	val2, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.Equal(t, val, val2)
-//
-//	// Test putting a key with an empty key
-//	err = db.Put(nil, val)
-//	assert.Equal(t, err, ErrKeyIsEmpty)
-//
-//	// Test putting a value with an empty value
-//	err = db.Put(key, nil)
-//	assert.Nil(t, err)
-//	val3, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.Equal(t, len(val3), 0)
-//	//TODO removed this test
-//	////Test putting a large number of key-value pairs
-//	//for i := 0; i < 1000000; i++ {
-//	//	err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
-//	//	assert.Nil(t, err)
-//	//}
-//	//// Restart the DB instance and test the Put method again
-//	//assert.Equal(t, 2, len(db.oldFile))
-//	err = db.Close()
-//	assert.Nil(t, err)
-//	db, err = Open(cfg)
-//	assert.Nil(t, err)
-//	assert.NotNil(t, db)
-//	err = db.Put(key, val)
-//	assert.Nil(t, err)
-//}
+func TestDB_Put(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	cfg.DataFileSize = 64 * 1024 * 1024
+	temp, err := os.MkdirTemp("", "bitcask-test-put")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	// Test putting a new key-value pair
+	key := utils.GetTestKey(1)
+	val := utils.GetTestValue(24)
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	val1, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, val, val1)
+
+	// Test putting an existing key-value pair
+	val = utils.GetTestValue(24)
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	val2, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, val, val2)
+
+	// Test putting a key with an empty key
+	err = db.Put(nil, val)
+	assert.Equal(t, err, ErrKeyIsEmpty)
+
+	// Test putting a value with an empty value
+	err = db.Put(key, nil)
+	assert.Nil(t, err)
+	val3, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, len(val3), 0)
+	//TODO removed this test
+	////Test putting a large number of key-value pairs
+	for i := 0; i < 1000000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
+		assert.Nil(t, err)
+	}
+	// Restart the DB instance and test the Put method again
+	assert.Equal(t, 2, len(db.oldFile))
+	err = db.Close()
+	assert.Nil(t, err)
+	db, err = Open(cfg)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+}
 
 // TestDB_Get is a unit test function for the Get method of the DB struct.
 //func TestDB_Get(t *testing.T) {
