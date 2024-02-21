@@ -83,10 +83,7 @@ func TestDB_Put(t *testing.T) {
 
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
-		if err != nil {
-			assert.Nil(t, err)
-			break
-		}
+		assert.Nil(t, err)
 	}
 	// Restart the DB instance and test the Put method again
 	assert.Equal(t, 2, len(db.oldFile))
@@ -100,70 +97,70 @@ func TestDB_Put(t *testing.T) {
 }
 
 // TestDB_Get is a unit test function for the Get method of the DB struct.
-//func TestDB_Get(t *testing.T) {
-//	// Create a temporary directory for testing
-//	cfg := DefaultConfig
-//	cfg.DataFileSize = 64 * 1024 * 1024
-//	temp, err := os.MkdirTemp("", "bitcask-test-get")
-//	assert.Nil(t, err)
-//	cfg.DirPath = temp
-//
-//	// Open a new DB instance
-//	db, err := Open(cfg)
-//
-//	assert.Nil(t, err)
-//	assert.NotNil(t, db)
-//
-//	// Test getting an existing key
-//	key := utils.GetTestKey(1)
-//	val := utils.GetTestValue(24)
-//	// Put the key-value pair into the database
-//	err = db.Put(key, val)
-//	assert.Nil(t, err)
-//	// Get the value associated with the key
-//	get1, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.Equal(t, get1, val)
-//
-//	// Test getting a non-existing key
-//	get2, err := db.Get([]byte("unknown key"))
-//	assert.Nil(t, get2)
-//	assert.Equal(t, err, ErrKeyNotFound)
-//
-//	// Test updating and getting a key
-//	valNew := utils.GetTestValue(24)
-//	err = db.Put(key, valNew)
-//	assert.Nil(t, err)
-//	get3, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.Equal(t, get3, valNew)
-//
-//	// Test deleting and getting a key
-//	err = db.Delete(key)
-//	assert.Nil(t, err)
-//	get4, err := db.Get(key)
-//	assert.Equal(t, 0, len(get4))
-//	assert.Equal(t, ErrKeyNotFound, err)
-//
-//	// Test getting a key from old files
-//	for i := 0; i < 1000000; i++ {
-//		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
-//		assert.Nil(t, err)
-//	}
-//	assert.Equal(t, 2, len(db.oldFile))
-//	get5, err := db.Get(utils.GetTestKey(1))
-//	assert.Nil(t, err)
-//	assert.NotNil(t, get5)
-//
-//	// Restart the database and verify the deletion
-//	err = db.Close()
-//	assert.Nil(t, err)
-//	db, err = Open(cfg)
-//	assert.Nil(t, err)
-//	get6, err := db.Get(key)
-//	assert.Nil(t, err)
-//	assert.NotNil(t, get6)
-//}
+func TestDB_Get(t *testing.T) {
+	// Create a temporary directory for testing
+	cfg := DefaultConfig
+	cfg.DataFileSize = 64 * 1024 * 1024
+	//temp, err := os.MkdirTemp("", "bitcask-test-get")
+	//assert.Nil(t, err)
+	//cfg.DirPath = temp
+
+	// Open a new DB instance
+	db, err := Open(cfg)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	// Test getting an existing key
+	key := utils.GetTestKey(1)
+	val := utils.GetTestValue(24)
+	// Put the key-value pair into the database
+	err = db.Put(key, val)
+	assert.Nil(t, err)
+	// Get the value associated with the key
+	get1, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, get1, val)
+
+	// Test getting a non-existing key
+	get2, err := db.Get([]byte("unknown key"))
+	assert.Nil(t, get2)
+	assert.Equal(t, err, ErrKeyNotFound)
+
+	// Test updating and getting a key
+	valNew := utils.GetTestValue(24)
+	err = db.Put(key, valNew)
+	assert.Nil(t, err)
+	get3, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.Equal(t, get3, valNew)
+
+	// Test deleting and getting a key
+	err = db.Delete(key)
+	assert.Nil(t, err)
+	get4, err := db.Get(key)
+	assert.Equal(t, 0, len(get4))
+	assert.Equal(t, ErrKeyNotFound, err)
+
+	// Test getting a key from old files
+	for i := 0; i < 1000000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
+		assert.Nil(t, err)
+	}
+	assert.Equal(t, 2, len(db.oldFile))
+	get5, err := db.Get(utils.GetTestKey(1))
+	assert.Nil(t, err)
+	assert.NotNil(t, get5)
+
+	// Restart the database and verify the deletion
+	err = db.Close()
+	assert.Nil(t, err)
+	db, err = Open(cfg)
+	assert.Nil(t, err)
+	get6, err := db.Get(key)
+	assert.Nil(t, err)
+	assert.NotNil(t, get6)
+}
 
 // TestDB_Delete is a unit test function for the Delete method of the DB struct.
 func TestDB_Delete(t *testing.T) {
