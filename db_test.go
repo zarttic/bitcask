@@ -30,7 +30,7 @@ func TestOpen(t *testing.T) {
 
 	// Open a new Bitcask database.
 	db, err := Open(cfg)
-	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -47,7 +47,6 @@ func TestDB_Put(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -107,7 +106,6 @@ func TestDB_Get(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -173,7 +171,6 @@ func TestDB_Delete(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
@@ -229,7 +226,7 @@ func TestDB_ListKeys(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -266,7 +263,7 @@ func TestDB_Fold(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -298,7 +295,7 @@ func TestDB_Close(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 }
@@ -313,7 +310,7 @@ func TestDB_Sync(t *testing.T) {
 
 	// Open a new DB instance
 	db, err := Open(cfg)
-	defer destroyDB(db)
+
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 	err = db.Sync()

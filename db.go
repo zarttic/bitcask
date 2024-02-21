@@ -128,7 +128,6 @@ func (db *DB) appendLogRecord(logRecord *data.LogRecord) (*data.LogRecordPos, er
 	//判断当前活跃文件是否存在,在数据库没有被写入的时候是没有任何文件的
 	// 如果为空则需要初试化
 	if db.activeFile == nil {
-
 		if err := db.setActiveFile(); err != nil {
 			return nil, err
 		}
