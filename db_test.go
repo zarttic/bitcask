@@ -78,8 +78,7 @@ func TestDB_Put(t *testing.T) {
 	val3, err := db.Get(key)
 	assert.Nil(t, err)
 	assert.Equal(t, len(val3), 0)
-
-	// Test putting a large number of key-value pairs
+	//Test putting a large number of key-value pairs
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
 		assert.Nil(t, err)
