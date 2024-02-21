@@ -101,9 +101,9 @@ func TestDB_Get(t *testing.T) {
 	// Create a temporary directory for testing
 	cfg := DefaultConfig
 	cfg.DataFileSize = 64 * 1024 * 1024
-	//temp, err := os.MkdirTemp("", "bitcask-test-get")
-	//assert.Nil(t, err)
-	//cfg.DirPath = temp
+	temp, err := os.MkdirTemp("", "bitcask-test-get")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
 	// Open a new DB instance
 	db, err := Open(cfg)
 
