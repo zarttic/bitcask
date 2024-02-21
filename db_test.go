@@ -104,7 +104,6 @@ func TestDB_Get(t *testing.T) {
 	//temp, err := os.MkdirTemp("", "bitcask-test-get")
 	//assert.Nil(t, err)
 	//cfg.DirPath = temp
-
 	// Open a new DB instance
 	db, err := Open(cfg)
 
@@ -145,7 +144,10 @@ func TestDB_Get(t *testing.T) {
 	// Test getting a key from old files
 	for i := 0; i < 1000000; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(128))
-		assert.Nil(t, err)
+		if err != nil {
+			assert.Nil(t, err)
+			break
+		}
 	}
 	assert.Equal(t, 2, len(db.oldFile))
 	get5, err := db.Get(utils.GetTestKey(1))
