@@ -23,6 +23,7 @@ jobs:
 
     # - name: Build
     #   run: go build -v ./...
-
     - name: Test
       run: go test -v ./...
+    - name: Benchmark
+      run: cd benchmark && go test -v -bench=.
