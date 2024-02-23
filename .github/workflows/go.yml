@@ -26,4 +26,4 @@ jobs:
     - name: Test
       run: go test -v ./...
     - name: Benchmark
-      run: go test -bench=./benchmark
+      run: go test -v -bench=./benchmark
