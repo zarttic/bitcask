@@ -24,7 +24,7 @@ func init() {
 }
 func BenchmarkPut(b *testing.B) {
 	b.ResetTimer()
-	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		err := db.Put(utils.GetTestKey(i), utils.GetTestValue(1024))
 		assert.Nil(b, err)
