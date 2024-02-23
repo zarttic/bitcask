@@ -24,6 +24,6 @@ jobs:
     # - name: Build
     #   run: go build -v ./...
     - name: Test
-      run: go test -v ./... -run '^(?!(.*benchmark)).*$'
+      run: go test -v ./...
     - name: Test
       run: go test -bench=./benchmark
