@@ -3,7 +3,9 @@ package bitcask
 import (
 	"bitcask/data"
 	"bitcask/index"
+	"bitcask/utils"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,6 +30,14 @@ type DB struct {
 	isMerging      bool                      //是否正在merge
 	seqNoFileExist bool                      // 存储事务序列号的文件是否存在
 	isInitiated    bool                      // 是否是第一次初始化数据目录
+}
+
+// Stat 存储引擎统计信息
+type Stat struct {
+	KeyNum          uint  // key 的总数量
+	DataFileNum     uint  // 数据文件的数量
+	ReclaimableSize int64 // 可以进行 merge 回收的数据量，字节为单位
+	DiskSize        int64 // 数据目录所占磁盘空间大小
 }
 
 // Open 打开bitcask存储引擎示例
@@ -551,4 +561,23 @@ func (db *DB) loadSeqNo() error {
 	db.seqNo = seq
 	db.seqNoFileExist = true
 	return nil
+}
+func (db *DB) Stat() *Stat {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	var dataFiles = uint(len(db.oldFile))
+	if db.activeFile != nil {
+		dataFiles += 1
+	}
+
+	dirSize, err := utils.DirSize(db.cfg.DirPath)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get dir size : %v", err))
+	}
+	return &Stat{
+		KeyNum:      uint(db.index.Size()),
+		DataFileNum: dataFiles,
+		DiskSize:    dirSize,
+	}
 }
