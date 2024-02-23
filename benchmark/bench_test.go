@@ -22,7 +22,7 @@ func init() {
 		panic(err)
 	}
 }
-func BenchmarkPut(b *testing.B) {
+func Benchmark_Put(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
