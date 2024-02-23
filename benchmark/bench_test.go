@@ -13,6 +13,7 @@ var db *bitcask.DB
 func init() {
 	cfg := bitcask.DefaultConfig
 	dir, err := os.MkdirTemp("", "bitcask-bench-test")
+	cfg.DirPath = dir
 	if err != nil {
 		panic(err)
 	}
