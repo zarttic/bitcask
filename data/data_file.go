@@ -87,7 +87,7 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
 	}
 	headerBuf, err := df.readNBytes(headerBytes, offset)
 	if err != nil {
-		return nil, 0, nil
+		return nil, 0, err
 	}
 	header, headerSize := decodeLogRecordHeader(headerBuf)
 	//读取到了文件末尾，返回EOF
@@ -112,7 +112,7 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
 
 	}
 	//校验数据
-	crc := getLofRecordCRC(logRecord, headerBuf[crc32.Size:headerSize])
+	crc := getLogRecordCRC(logRecord, headerBuf[crc32.Size:headerSize])
 	if crc != header.crc {
 		return nil, 0, ErrInvalidCRC
 	}
