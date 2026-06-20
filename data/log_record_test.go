@@ -74,7 +74,7 @@ func TestGetLogRecordCRC(t *testing.T) {
 		Type:  LogRecordNormal,
 	}
 	headerBuf := []byte{186, 103, 192, 80, 0, 6, 10}
-	crc := getLofRecordCRC(rec, headerBuf[crc32.Size:])
+	crc := getLogRecordCRC(rec, headerBuf[crc32.Size:])
 	assert.Equal(t, crc, uint32(1354786746))
 
 	rec = &LogRecord{
@@ -82,7 +82,7 @@ func TestGetLogRecordCRC(t *testing.T) {
 		Type: LogRecordNormal,
 	}
 	headerBuf = []byte{184, 38, 83, 75, 0, 6, 0}
-	crc = getLofRecordCRC(rec, headerBuf[crc32.Size:])
+	crc = getLogRecordCRC(rec, headerBuf[crc32.Size:])
 	assert.Equal(t, crc, uint32(1263740600))
 
 	rec = &LogRecord{
@@ -91,7 +91,7 @@ func TestGetLogRecordCRC(t *testing.T) {
 		Type:  LogRecordNormal,
 	}
 	headerBuf = []byte{190, 90, 126, 234, 1, 18, 22}
-	crc = getLofRecordCRC(rec, headerBuf[crc32.Size:])
+	crc = getLogRecordCRC(rec, headerBuf[crc32.Size:])
 	assert.Equal(t, crc, uint32(3934149310))
 
 }

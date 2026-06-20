@@ -109,11 +109,11 @@ func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
 	return header, int64(index)
 }
 
-// getLofRecordCRC函数用于计算LogRecord对象的CRC校验码。
+// getLogRecordCRC函数用于计算LogRecord对象的CRC校验码。
 // 参数lr为要计算CRC校验码的LogRecord对象。
 // 参数header为LogRecord对象的头部字节切片。
 // 返回LogRecord对象的CRC校验码。
-func getLofRecordCRC(lr *LogRecord, header []byte) uint32 {
+func getLogRecordCRC(lr *LogRecord, header []byte) uint32 {
 	if lr == nil {
 		return 0
 	}
