@@ -3,14 +3,10 @@ package utils
 import (
 	"fmt"
 	"math/rand"
-	"time"
 )
 
-// randStr is a new instance of Rand with a new Source initialized with the current Unix time.
-var (
-	randStr = rand.New(rand.NewSource(time.Now().Unix()))
-	letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-)
+// letters is the set of characters used to generate random values.
+var letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 // GetTestKey returns a test key with a format of "key-000000000".
 func GetTestKey(i int) []byte {
@@ -21,7 +17,7 @@ func GetTestKey(i int) []byte {
 func GetTestValue(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letters[randStr.Intn(len(letters))]
+		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return []byte("value-" + string(b))
 }

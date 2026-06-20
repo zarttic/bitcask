@@ -103,6 +103,7 @@ type bptreeIterator struct {
 	reverse   bool          // 是否反向遍历
 	currKey   []byte
 	currValue []byte
+	currPos   *data.LogRecordPos // 缓存解码后的位置信息
 }
 
 func newBptreeIterator(tree *bbolt.DB, reverse bool) (bpi *bptreeIterator) {
@@ -124,10 +125,12 @@ func (b *bptreeIterator) Rewind() {
 	} else {
 		b.currKey, b.currValue = b.cursor.First()
 	}
+	b.decodeCurrPos()
 }
 
 func (b *bptreeIterator) Seek(key []byte) {
 	b.currKey, b.currValue = b.cursor.Seek(key)
+	b.decodeCurrPos()
 }
 
 func (b *bptreeIterator) Next() {
@@ -135,7 +138,15 @@ func (b *bptreeIterator) Next() {
 		b.currKey, b.currValue = b.cursor.Prev()
 	} else {
 		b.currKey, b.currValue = b.cursor.Next()
+	}
+	b.decodeCurrPos()
+}
 
+func (b *bptreeIterator) decodeCurrPos() {
+	if len(b.currValue) != 0 {
+		b.currPos = data.DecodeLogRecordPos(b.currValue)
+	} else {
+		b.currPos = nil
 	}
 }
 
@@ -148,8 +159,7 @@ func (b *bptreeIterator) Key() []byte {
 }
 
 func (b *bptreeIterator) Value() *data.LogRecordPos {
-	return data.DecodeLogRecordPos(b.currValue)
-
+	return b.currPos
 }
 
 func (b *bptreeIterator) Close() {

@@ -82,7 +82,7 @@ func Open(cfg DBConfig) (*DB, error) {
 	// b+树索引不需要从数据文件中加载索引
 	if cfg.IndexType != BPTree {
 		//从hint文件中加载索引（如果有的话）
-		if err := db.loadIndexFromFiles(); err != nil {
+		if err := db.loadIndexFromHintFile(); err != nil {
 			return nil, err
 		}
 		//从数据文件中加载索引
@@ -428,6 +428,8 @@ func (db *DB) Delete(key []byte) error {
 
 // ListKeys returns a list of keys in the database.
 func (db *DB) ListKeys() [][]byte {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 	// Get an iterator for the index.
 	iterator := db.index.Iterator(false)
 	defer iterator.Close()
@@ -461,6 +463,7 @@ func (db *DB) Fold(fn func(key, value []byte) bool) error {
 
 	// Get an iterator for the index.
 	iterator := db.index.Iterator(false)
+	defer iterator.Close()
 
 	// Iterate over the index using the iterator.
 	for iterator.Rewind(); iterator.Valid(); iterator.Next() {
@@ -576,8 +579,9 @@ func (db *DB) Stat() *Stat {
 		panic(fmt.Sprintf("failed to get dir size : %v", err))
 	}
 	return &Stat{
-		KeyNum:      uint(db.index.Size()),
-		DataFileNum: dataFiles,
-		DiskSize:    dirSize,
+		KeyNum:          uint(db.index.Size()),
+		DataFileNum:     dataFiles,
+		DiskSize:        dirSize,
+		ReclaimableSize: db.getReclaimableSize(),
 	}
 }

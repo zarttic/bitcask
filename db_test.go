@@ -41,9 +41,10 @@ func TestDB_Put(t *testing.T) {
 	// Create a temporary directory for testing
 	cfg := DefaultConfig
 	cfg.DataFileSize = 64 * 1024 * 1024
-	//temp, err := os.MkdirTemp("", "bitcask-test-put")
-	//assert.Nil(t, err)
-	//cfg.DirPath = temp
+	temp, err := os.MkdirTemp("", "bitcask-test-put")
+	assert.Nil(t, err)
+	cfg.DirPath = temp
+	defer os.RemoveAll(temp)
 
 	// Open a new DB instance
 	db, err := Open(cfg)
@@ -94,6 +95,7 @@ func TestDB_Put(t *testing.T) {
 	assert.NotNil(t, db)
 	err = db.Put(key, val)
 	assert.Nil(t, err)
+	_ = db.Close()
 }
 
 // TestDB_Get is a unit test function for the Get method of the DB struct.

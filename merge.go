@@ -60,7 +60,6 @@ func (db *DB) Merge() error {
 		if err := os.RemoveAll(mergePath); err != nil {
 			return err
 		}
-		return err
 	}
 	//新建一个merge目录
 	if err := os.Mkdir(mergePath, os.ModePerm); err != nil {
@@ -138,6 +137,28 @@ func (db *DB) Merge() error {
 		return err
 	}
 	return nil
+}
+
+// getReclaimableSize 计算可回收的数据量
+func (db *DB) getReclaimableSize() int64 {
+	var reclaimableSize int64
+	for _, file := range db.oldFile {
+		var offset int64 = 0
+		for {
+			record, size, err := file.ReadLogRecord(offset)
+			if err != nil {
+				break
+			}
+			realKey, _ := parseLogRecordKey(record.Key)
+			pos := db.index.Get(realKey)
+			// 如果索引中不存在，或者索引指向的文件/偏移与当前记录不同，说明该记录可回收
+			if pos == nil || pos.Fid != file.FileID || pos.Offset != offset {
+				reclaimableSize += size
+			}
+			offset += size
+		}
+	}
+	return reclaimableSize
 }
 
 // getMergePath 获取merge目录
@@ -244,6 +265,6 @@ func (db *DB) loadIndexFromHintFile() error {
 		db.index.Put(record.Key, pos)
 		offset += size
 	}
-	return err
+	return nil
 
 }
