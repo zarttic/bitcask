@@ -2,13 +2,18 @@ package main
 
 import (
 	"bitcask"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 )
+
+//go:embed static/*
+var staticFiles embed.FS
 
 var db *bitcask.DB
 
@@ -23,10 +28,10 @@ func init() {
 	if err != nil {
 		panic(fmt.Errorf("failed to open bitcask: %w", err))
 	}
-
+	log.Printf("Bitcask DB opened at %s", dir)
 }
 
-// put
+// handlePut handles PUT requests to insert key-value pairs.
 func handlePut(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -43,8 +48,11 @@ func handlePut(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode("OK")
 }
 
+// handleGet handles GET requests to retrieve values by key.
 func handleGet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -59,8 +67,9 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(string(value))
-
 }
+
+// handleDelete handles DELETE requests to remove keys.
 func handleDelete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -74,6 +83,8 @@ func handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode("OK")
 }
+
+// handleListKey handles GET requests to list all keys.
 func handleListKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -86,8 +97,9 @@ func handleListKey(w http.ResponseWriter, r *http.Request) {
 		result = append(result, string(key))
 	}
 	_ = json.NewEncoder(w).Encode(result)
-
 }
+
+// handleStat handles GET requests to return database statistics.
 func handleStat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -97,12 +109,23 @@ func handleStat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(stat)
 }
+
 func main() {
+	// Serve embedded static files at root
+	staticFS, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		log.Fatalf("failed to load embedded files: %v", err)
+	}
+	http.Handle("/", http.FileServer(http.FS(staticFS)))
+
+	// API routes
 	http.HandleFunc("/bitcask/put", handlePut)
 	http.HandleFunc("/bitcask/get", handleGet)
 	http.HandleFunc("/bitcask/delete", handleDelete)
 	http.HandleFunc("/bitcask/listkey", handleListKey)
 	http.HandleFunc("/bitcask/stat", handleStat)
 
-	_ = http.ListenAndServe(":8082", nil)
+	addr := ":8082"
+	log.Printf("Bitcask Web UI running at http://localhost%s", addr)
+	_ = http.ListenAndServe(addr, nil)
 }

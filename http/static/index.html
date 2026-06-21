@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitcask KV Manager</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg-card: #1a1d27;
+    --bg-input: #252836;
+    --bg-hover: #2a2d3a;
+    --border: #2e3142;
+    --text: #e4e6f0;
+    --text-dim: #8b8fa3;
+    --accent: #6c5ce7;
+    --accent-light: #a29bfe;
+    --green: #00b894;
+    --red: #e17055;
+    --yellow: #fdcb6e;
+    --blue: #74b9ff;
+    --radius: 10px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .sidebar .logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-light);
+    padding: 8px 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar .logo span { font-size: 24px; }
+  .nav-item {
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-dim);
+    transition: all 0.2s;
+  }
+  .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #fff; }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* Main */
+  .main {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+    max-height: 100vh;
+  }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .page-title .badge {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  /* Stats Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: transform 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-card .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+  .stat-card .icon { float: right; font-size: 28px; opacity: 0.3; }
+  .stat-card:nth-child(1) .value { color: var(--accent-light); }
+  .stat-card:nth-child(2) .value { color: var(--green); }
+  .stat-card:nth-child(3) .value { color: var(--yellow); }
+  .stat-card:nth-child(4) .value { color: var(--blue); }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text-dim); }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-light); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { opacity: 0.85; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* Table */
+  .table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-input);
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr:hover td { background: var(--bg-hover); }
+  .key-cell { color: var(--accent-light); font-weight: 500; }
+  .value-cell { color: var(--text-dim); }
+  .actions-cell { display: flex; gap: 6px; }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    width: 500px;
+    max-width: 90vw;
+    box-shadow: var(--shadow);
+  }
+  .modal h3 { margin-bottom: 20px; font-size: 18px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus,
+  .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 100px; }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #fff;
+    animation: slideIn 0.3s ease;
+    box-shadow: var(--shadow);
+  }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+  .toast.info { background: var(--accent); }
+  @keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Detail Panel */
+  .detail-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-top: 20px;
+    display: none;
+  }
+  .detail-panel.show { display: block; }
+  .detail-panel h4 { margin-bottom: 16px; color: var(--accent-light); }
+  .detail-kv { margin-bottom: 12px; }
+  .detail-kv .dk { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .detail-kv .dv {
+    margin-top: 4px;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border-radius: 6px;
+    font-size: 13px;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  /* Loading */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; padding: 16px 8px; }
+    .sidebar .logo span:last-child { display: none; }
+    .nav-item span { display: none; }
+    .nav-item { justify-content: center; padding: 10px; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="logo"><span>⚡</span><span>Bitcask</span></div>
+  <div class="nav-item active" data-page="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+  </div>
+  <div class="nav-item" data-page="explorer">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <span>Explorer</span>
+  </div>
+  <div class="nav-item" data-page="terminal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    <span>Terminal</span>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+
+  <!-- Dashboard Page -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Dashboard <span class="badge" id="db-status">Connected</span></div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="icon">🔑</div>
+        <div class="label">Total Keys</div>
+        <div class="value" id="stat-keys">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">📁</div>
+        <div class="label">Data Files</div>
+        <div class="value" id="stat-files">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">💾</div>
+        <div class="label">Disk Size</div>
+        <div class="value" id="stat-disk">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">♻️</div>
+        <div class="label">Reclaimable</div>
+        <div class="value" id="stat-reclaim">--</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="showPutModal()">+ New Entry</button>
+      <button class="btn btn-ghost" onclick="loadStats()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Explorer Page -->
+  <div class="page" id="page-explorer">
+    <div class="page-title">Key-Value Explorer</div>
+    <div class="toolbar">
+      <input class="search-box" id="search-input" placeholder="Search keys..." oninput="filterKeys()">
+      <button class="btn btn-primary" onclick="showPutModal()">+ Add</button>
+      <button class="btn btn-ghost" onclick="loadKeys()">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40%">Key</th>
+            <th style="width:40%">Value Preview</th>
+            <th style="width:20%">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="keys-table-body">
+          <tr><td colspan="3"><div class="empty-state"><div class="icon">📭</div><div>Loading...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="detail-panel" class="detail-panel">
+      <h4>📋 Detail View</h4>
+      <div class="detail-kv">
+        <div class="dk">Key</div>
+        <div class="dv" id="detail-key"></div>
+      </div>
+      <div class="detail-kv">
+        <div class="dk">Value</div>
+        <div class="dv" id="detail-value"></div>
+      </div>
+      <div style="margin-top:16px; display:flex; gap:8px;">
+        <button class="btn btn-sm btn-ghost" onclick="copyToClipboard('detail-key')">Copy Key</button>
+        <button class="btn btn-sm btn-ghost" onclick="copyToClipboard('detail-value')">Copy Value</button>
+        <button class="btn btn-sm btn-danger" id="detail-delete-btn">Delete This Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal Page -->
+  <div class="page" id="page-terminal">
+    <div class="page-title">Interactive Terminal</div>
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px;">
+      <div id="terminal-output" style="min-height:300px; max-height:500px; overflow-y:auto; margin-bottom:16px; font-size:13px; line-height:1.8;">
+        <div style="color:var(--text-dim)">Welcome to Bitcask Terminal. Type <span style="color:var(--accent-light)">help</span> for commands.</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <span style="color:var(--green); padding:10px 0; font-weight:bold;">$</span>
+        <input class="search-box" id="terminal-input" placeholder="put key value / get key / delete key / list / stat / clear" onkeydown="if(event.key==='Enter')execCmd()">
+        <button class="btn btn-primary" onclick="execCmd()">Run</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Put Modal -->
+<div class="modal-overlay" id="put-modal">
+  <div class="modal">
+    <h3>✏️ New Entry</h3>
+    <div class="form-group">
+      <label>Key</label>
+      <input id="put-key" placeholder="Enter key...">
+    </div>
+    <div class="form-group">
+      <label>Value</label>
+      <textarea id="put-value" placeholder="Enter value..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePutModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doPut()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const API = '/bitcask';
+let allKeys = [];
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-' + item.dataset.page).classList.add('active');
+    if (item.dataset.page === 'dashboard') loadStats();
+    if (item.dataset.page === 'explorer') loadKeys();
+  });
+});
+
+// Toast
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// Format bytes
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Load Stats
+async function loadStats() {
+  try {
+    const res = await fetch(API + '/stat');
+    const data = await res.json();
+    document.getElementById('stat-keys').textContent = (data.KeyNum || 0).toLocaleString();
+    document.getElementById('stat-files').textContent = data.DataFileNum || 0;
+    document.getElementById('stat-disk').textContent = formatBytes(data.DiskSize || 0);
+    document.getElementById('stat-reclaim').textContent = formatBytes(data.ReclaimableSize || 0);
+    document.getElementById('db-status').textContent = 'Connected';
+    document.getElementById('db-status').style.background = 'var(--green)';
+  } catch (e) {
+    document.getElementById('db-status').textContent = 'Disconnected';
+    document.getElementById('db-status').style.background = 'var(--red)';
+    toast('Failed to load stats: ' + e.message, 'error');
+  }
+}
+
+// Load Keys
+async function loadKeys() {
+  try {
+    const res = await fetch(API + '/listkey');
+    allKeys = await res.json() || [];
+    renderKeys(allKeys);
+    toast(`Loaded ${allKeys.length} keys`, 'success');
+  } catch (e) {
+    toast('Failed to load keys: ' + e.message, 'error');
+  }
+}
+
+// Render Keys
+function renderKeys(keys) {
+  const tbody = document.getElementById('keys-table-body');
+  if (!keys || keys.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="icon">📭</div><div>No keys found</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = keys.map((k, i) => `
+    <tr>
+      <td class="key-cell" title="${escHtml(k)}">${escHtml(k)}</td>
+      <td class="value-cell"><span id="vp-${i}">--</span></td>
+      <td class="actions-cell">
+        <button class="btn btn-sm btn-ghost" onclick="viewKey('${escJs(k)}', ${i})">View</button>
+        <button class="btn btn-sm btn-danger" onclick="doDelete('${escJs(k)}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Load value previews (batch, with limit)
+  keys.slice(0, 100).forEach((k, i) => loadValuePreview(k, i));
+}
+
+async function loadValuePreview(key, idx) {
+  try {
+    const res = await fetch(API + '/get?key=' + encodeURIComponent(key));
+    const val = await res.json();
+    const el = document.getElementById('vp-' + idx);
+    if (el) el.textContent = val ? (val.length > 80 ? val.substring(0, 80) + '...' : val) : '(empty)';
+  } catch (e) {}
+}
+
+// Filter Keys
+function filterKeys() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  if (!q) { renderKeys(allKeys); return; }
+  renderKeys(allKeys.filter(k => k.toLowerCase().includes(q)));
+}
+
+// View Key Detail
+async function viewKey(key, idx) {
+  try {
+    const res = await fetch(API + '/get?key=' + encodeURIComponent(key));
+    const val = await res.json();
+    document.getElementById('detail-key').textContent = key;
+    document.getElementById('detail-value').textContent = val || '(empty)';
+    document.getElementById('detail-delete-btn').onclick = () => doDelete(key);
+    document.getElementById('detail-panel').classList.add('show');
+    document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    toast('Failed to get value: ' + e.message, 'error');
+  }
+}
+
+// Copy
+function copyToClipboard(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success'));
+}
+
+// Put Modal
+function showPutModal() {
+  document.getElementById('put-key').value = '';
+  document.getElementById('put-value').value = '';
+  document.getElementById('put-modal').classList.add('show');
+  document.getElementById('put-key').focus();
+}
+function closePutModal() {
+  document.getElementById('put-modal').classList.remove('show');
+}
+
+// Do Put
+async function doPut() {
+  const key = document.getElementById('put-key').value.trim();
+  const value = document.getElementById('put-value').value;
+  if (!key) { toast('Key cannot be empty', 'error'); return; }
+  try {
+    const body = {};
+    body[key] = value;
+    const res = await fetch(API + '/put', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      toast('Saved!', 'success');
+      closePutModal();
+      loadKeys();
+      loadStats();
+    } else {
+      toast('Save failed: ' + await res.text(), 'error');
+    }
+  } catch (e) {
+    toast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// Do Delete
+async function doDelete(key) {
+  if (!confirm('Delete key "' + key + '"?')) return;
+  try {
+    const res = await fetch(API + '/delete?key=' + encodeURIComponent(key), { method: 'DELETE' });
+    if (res.ok) {
+      toast('Deleted!', 'success');
+      document.getElementById('detail-panel').classList.remove('show');
+      loadKeys();
+      loadStats();
+    } else {
+      toast('Delete failed: ' + await res.text(), 'error');
+    }
+  } catch (e) {
+    toast('Delete failed: ' + e.message, 'error');
+  }
+}
+
+// Terminal
+const cmdHistory = [];
+let histIdx = -1;
+
+function termPrint(text, color) {
+  const el = document.getElementById('terminal-output');
+  const line = document.createElement('div');
+  line.style.color = color || 'var(--text)';
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function execCmd() {
+  const input = document.getElementById('terminal-input');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  input.value = '';
+  cmdHistory.unshift(cmd);
+  histIdx = -1;
+
+  termPrint('$ ' + cmd, 'var(--green)');
+
+  const parts = cmd.split(/\s+/);
+  const action = parts[0].toLowerCase();
+
+  try {
+    if (action === 'help') {
+      termPrint('Commands:', 'var(--accent-light)');
+      termPrint('  put <key> <value>   - Insert or update a key-value pair');
+      termPrint('  get <key>           - Get value by key');
+      termPrint('  delete <key>        - Delete a key');
+      termPrint('  list                - List all keys');
+      termPrint('  stat                - Show database stats');
+      termPrint('  clear               - Clear terminal');
+    } else if (action === 'clear') {
+      document.getElementById('terminal-output').innerHTML = '';
+    } else if (action === 'put' && parts.length >= 3) {
+      const key = parts[1];
+      const value = parts.slice(2).join(' ');
+      const body = {};
+      body[key] = value;
+      const res = await fetch(API + '/put', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      termPrint(res.ok ? 'OK' : 'FAIL: ' + await res.text(), res.ok ? 'var(--green)' : 'var(--red)');
+    } else if (action === 'get' && parts.length >= 2) {
+      const res = await fetch(API + '/get?key=' + encodeURIComponent(parts[1]));
+      const val = await res.json();
+      termPrint(val || '(not found)', 'var(--yellow)');
+    } else if (action === 'delete' && parts.length >= 2) {
+      const res = await fetch(API + '/delete?key=' + encodeURIComponent(parts[1]), { method: 'DELETE' });
+      termPrint(res.ok ? 'Deleted' : 'FAIL', res.ok ? 'var(--green)' : 'var(--red)');
+    } else if (action === 'list') {
+      const res = await fetch(API + '/listkey');
+      const keys = await res.json() || [];
+      if (keys.length === 0) {
+        termPrint('(empty)', 'var(--text-dim)');
+      } else {
+        keys.forEach((k, i) => termPrint(`  [${i}] ${k}`, 'var(--accent-light)'));
+        termPrint(`Total: ${keys.length} keys`, 'var(--text-dim)');
+      }
+    } else if (action === 'stat') {
+      const res = await fetch(API + '/stat');
+      const d = await res.json();
+      termPrint(`Keys: ${d.KeyNum || 0}  Files: ${d.DataFileNum || 0}  Disk: ${formatBytes(d.DiskSize || 0)}  Reclaimable: ${formatBytes(d.ReclaimableSize || 0)}`, 'var(--blue)');
+    } else {
+      termPrint('Unknown command. Type "help" for usage.', 'var(--red)');
+    }
+  } catch (e) {
+    termPrint('Error: ' + e.message, 'var(--red)');
+  }
+}
+
+// Terminal history navigation
+document.getElementById('terminal-input').addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp' && histIdx < cmdHistory.length - 1) {
+    histIdx++;
+    e.target.value = cmdHistory[histIdx];
+  } else if (e.key === 'ArrowDown' && histIdx > 0) {
+    histIdx--;
+    e.target.value = cmdHistory[histIdx];
+  } else if (e.key === 'ArrowDown' && histIdx === 0) {
+    histIdx = -1;
+    e.target.value = '';
+  }
+});
+
+// Escape helpers
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escJs(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// Close modal on overlay click
+document.getElementById('put-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePutModal();
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePutModal();
+});
+
+// Init
+loadStats();
+</script>
+</body>
+</html>
